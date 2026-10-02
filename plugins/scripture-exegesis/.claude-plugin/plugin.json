@@ -1,0 +1,8 @@
+{
+  "name": "scripture-exegesis",
+  "description": "Arbitrate a passage from SBLGNT or the Leningrad Codex, in the argument of the book. Compare MT and LXX when the NT quotes. Label inference.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Clayton Black"
+  }
+}

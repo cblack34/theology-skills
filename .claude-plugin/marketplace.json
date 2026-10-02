@@ -1,0 +1,19 @@
+{
+  "name": "theology-skills",
+  "description": "Theology plugins. Not coding tools. First plugin arbitrates a passage from the Greek or Hebrew text.",
+  "owner": {
+    "name": "Clayton Black",
+    "email": "cblack34@users.noreply.github.com"
+  },
+  "plugins": [
+    {
+      "name": "scripture-exegesis",
+      "source": "./plugins/scripture-exegesis",
+      "description": "Arbitrate a passage from SBLGNT or the Leningrad Codex, in the argument of the book. Compare MT and LXX when the NT quotes. Label inference.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Clayton Black"
+      }
+    }
+  ]
+}
