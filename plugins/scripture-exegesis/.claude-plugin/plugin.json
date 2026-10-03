@@ -1,8 +1,12 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "scripture-exegesis",
-  "description": "Arbitrate a passage from SBLGNT or the Leningrad Codex, in the argument of the book. Compare MT and LXX when the NT quotes. Label inference.",
+  "displayName": "Scripture Exegesis",
   "version": "0.1.0",
+  "description": "Arbitrate a passage from SBLGNT or the Leningrad Codex, in the argument of the book. Compare MT and LXX when the NT quotes. Label inference.",
   "author": {
     "name": "Clayton Black"
-  }
+  },
+  "repository": "https://github.com/cblack34/theology-skills",
+  "skills": "./skills/"
 }

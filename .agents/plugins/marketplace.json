@@ -1,0 +1,20 @@
+{
+  "name": "theology-skills",
+  "interface": {
+    "displayName": "Theology Skills"
+  },
+  "plugins": [
+    {
+      "name": "scripture-exegesis",
+      "source": {
+        "source": "local",
+        "path": "./plugins/scripture-exegesis"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Research"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[project]
+name = "theology-skills"
+version = "0.1.0"
+description = "Cross-harness marketplace tooling for the theology-skills marketplace."
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+dependencies = []
+
+[tool.uv]
+package = false
