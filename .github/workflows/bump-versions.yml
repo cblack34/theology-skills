@@ -1,0 +1,112 @@
+name: Bump plugin versions
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail if a PR bumps a plugin manifest version
+        run: |
+          base="origin/${{ github.base_ref }}"
+          # Modified manifests only: a brand-new plugin ships at the version its manifest declares.
+          # Compare parsed values, not diff text, so key reordering passes and reformatting cannot hide a bump.
+          for f in $(git diff --name-only --diff-filter=M "$base...HEAD" -- 'plugins/*/.claude-plugin/plugin.json' 'plugins/*/.codex-plugin/plugin.json'); do
+            was=$(git show "$base:$f" | jq -r .version); now=$(jq -r .version "$f")
+            if [ "$was" != "$now" ]; then
+              echo "::error file=$f::Plugin versions are bumped by CI on merge to main ($was -> $now here). Revert the version change in this PR."
+              exit 1
+            fi
+          done
+
+  label:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Add release labels implied by the diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base="origin/${{ github.base_ref }}"
+          new_plugins=$(git diff --name-only --diff-filter=A "$base...HEAD" -- 'plugins/*/.claude-plugin/plugin.json' | cut -d/ -f2)
+          label=""
+          for skill in $(git diff --name-only --diff-filter=A "$base...HEAD" -- 'plugins/*/skills/*/SKILL.md'); do
+            grep -qx "$(cut -d/ -f2 <<<"$skill")" <<<"$new_plugins" || label="release:minor"
+          done
+          if git diff --name-only --diff-filter=DR "$base...HEAD" -- 'plugins/*/skills/*/SKILL.md' | grep -q .; then
+            label="release:major"
+          fi
+          [ -n "$label" ] || exit 0
+          pr="${{ github.event.pull_request.number }}"
+          if gh pr view "$pr" --repo "${{ github.repository }}" --json labels --jq '.labels[].name' | grep -qx "$label"; then
+            echo "$label already present"; exit 0
+          fi
+          echo "Adding $label"
+          # On a fork PR the token is read-only and this write fails; the check then fails until a maintainer adds the label.
+          gh pr edit "$pr" --repo "${{ github.repository }}" --add-label "$label" \
+            || { echo "::error::Could not add $label (fork PR?). Add it by hand and re-run this check."; exit 1; }
+
+  bump:
+    # Skip the bot's own bump commit, identified by actor and message marker together; a skipped job never enters the queue.
+    if: "github.event_name == 'push' && !(github.actor == 'cblack34-release-bot[bot]' && startsWith(github.event.head_commit.message, 'chore: bump plugin versions after'))"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    concurrency:
+      group: bump-main
+      queue: max
+    steps:
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app
+        with:
+          client-id: ${{ secrets.RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.29"
+          enable-cache: true
+      - name: Bump changed plugins
+        id: bump
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          labels=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" --jq '[.[0].labels[]?.name] | join(",")')
+          echo "PR labels: ${labels:-none}"
+          summary=$(uv run --locked scripts/ci_bump_versions.py "${{ github.event.before }}" "${{ github.sha }}" --labels "$labels")
+          echo "$summary"
+          echo "summary<<EOF" >> "$GITHUB_OUTPUT"; echo "$summary" >> "$GITHUB_OUTPUT"; echo "EOF" >> "$GITHUB_OUTPUT"
+      - name: Validate and push
+        if: steps.bump.outputs.summary != ''
+        run: |
+          uv run --locked scripts/validate.py
+          git config user.name "${{ steps.app.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.app.outputs.app-slug }}[bot]@users.noreply.github.com"
+          git add plugins/*/.claude-plugin/plugin.json plugins/*/.codex-plugin/plugin.json
+          git commit -F - <<MSG
+          chore: bump plugin versions after ${{ github.sha }}
+
+          ${{ steps.bump.outputs.summary }}
+          MSG
+          git push origin HEAD:main || { git fetch origin main && git rebase origin/main && git push origin HEAD:main; }

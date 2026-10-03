@@ -1,0 +1,26 @@
+{
+  "name": "scripture-exegesis",
+  "version": "0.1.0",
+  "description": "Arbitrate a passage from SBLGNT or the Leningrad Codex, in the argument of the book. Compare MT and LXX when the NT quotes. Label inference.",
+  "author": {
+    "name": "Clayton Black",
+    "url": "https://github.com/cblack34"
+  },
+  "repository": "https://github.com/cblack34/theology-skills",
+  "keywords": [
+    "agent-skill"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Scripture Exegesis",
+    "shortDescription": "Arbitrate a passage from the Greek or Hebrew text, in the argument of the book.",
+    "longDescription": "Arbitrate a passage from SBLGNT or the Leningrad Codex, in the argument of the book. Compare MT and LXX when the NT quotes. Label inference.",
+    "developerName": "Clayton Black",
+    "category": "Research",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Arbitrate this passage from the Greek or Hebrew text.",
+      "Compare the MT and LXX where the New Testament quotes this passage."
+    ]
+  }
+}
