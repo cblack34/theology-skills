@@ -92,6 +92,14 @@ class SemVer:
         return 1 if len(self.prerelease) > len(other.prerelease) else -1
 
 
+def is_valid_semver(value: str) -> bool:
+    try:
+        SemVer.parse(value)
+    except ValueError:
+        return False
+    return True
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Bump both harness manifest versions for one plugin."

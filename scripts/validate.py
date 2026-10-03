@@ -8,16 +8,13 @@ from pathlib import Path
 from typing import Any
 
 
+from bump_plugin_version import is_valid_semver
+
 ROOT = Path(__file__).resolve().parents[1]
 PLUGINS_ROOT = ROOT / "plugins"
 CLAUDE_MARKETPLACE = ROOT / ".claude-plugin" / "marketplace.json"
 CODEX_MARKETPLACE = ROOT / ".agents" / "plugins" / "marketplace.json"
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-SEMVER_RE = re.compile(
-    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
-    r"(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
-    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
-)
 FRONTMATTER_RE = re.compile(r"\A---\n(?P<body>.*?)\n---(?:\n|\Z)", re.DOTALL)
 
 
@@ -149,7 +146,7 @@ def validate_plugin(name: str, check: Validation) -> None:
         if manifest.get("name") != name:
             check.error(path, f"name must match plugin directory {name!r}")
         version = manifest.get("version")
-        if not isinstance(version, str) or SEMVER_RE.fullmatch(version) is None:
+        if not isinstance(version, str) or not is_valid_semver(version):
             check.error(path, "version must use semantic versioning")
         if not isinstance(manifest.get("description"), str) or not manifest["description"].strip():
             check.error(path, "description must be non-empty")

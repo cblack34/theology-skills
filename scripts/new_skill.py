@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 
 
+from bump_plugin_version import is_valid_semver
+
 ROOT = Path(__file__).resolve().parents[1]
 PLUGINS_ROOT = ROOT / "plugins"
 CLAUDE_MARKETPLACE = ROOT / ".claude-plugin" / "marketplace.json"
@@ -15,11 +17,6 @@ CODEX_MARKETPLACE = ROOT / ".agents" / "plugins" / "marketplace.json"
 MARKETPLACE_NAME = "theology-skills"
 AUTHOR_NAME = "Clayton Black"
 REPOSITORY_URL = "https://github.com/cblack34/theology-skills"
-SEMVER_RE = re.compile(
-    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
-    r"(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
-    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
-)
 
 
 def parse_args() -> argparse.Namespace:
@@ -157,7 +154,7 @@ def main() -> None:
         return
     if not category:
         raise ValueError("category must not be empty")
-    if SEMVER_RE.fullmatch(args.version) is None:
+    if not is_valid_semver(args.version):
         raise ValueError("version must be valid semantic versioning, such as 0.1.0")
 
     plugin_root = PLUGINS_ROOT / name

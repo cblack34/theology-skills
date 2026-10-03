@@ -9,7 +9,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from bump_plugin_version import SemVer, update_plugin_version  # noqa: E402
+from bump_plugin_version import SemVer, is_valid_semver, update_plugin_version  # noqa: E402
 
 
 class BumpPluginVersionTests(unittest.TestCase):
@@ -115,6 +115,16 @@ class BumpPluginVersionTests(unittest.TestCase):
                 update_plugin_version(self.plugins_root, self.plugin, "minor")
 
         self.assertEqual(self.versions(), ["1.2.3", "1.2.3"])
+
+
+class IsValidSemverTests(unittest.TestCase):
+    def test_accepts_valid_versions(self) -> None:
+        for value in ("0.1.0", "1.2.3-alpha.1", "1.0.0+build.5", "1.0.0-0.3.7"):
+            self.assertTrue(is_valid_semver(value), value)
+
+    def test_rejects_what_the_bump_parser_rejects(self) -> None:
+        for value in ("1.0.0-01", "1.0", "01.0.0", "v1.0.0", ""):
+            self.assertFalse(is_valid_semver(value), value)
 
 
 if __name__ == "__main__":
