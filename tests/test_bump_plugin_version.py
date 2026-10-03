@@ -123,7 +123,7 @@ class IsValidSemverTests(unittest.TestCase):
             self.assertTrue(is_valid_semver(value), value)
 
     def test_rejects_what_the_bump_parser_rejects(self) -> None:
-        for value in ("1.0.0-01", "1.0", "01.0.0", "v1.0.0", ""):
+        for value in ("1.0.0-01", "1.0", "01.0.0", "v1.0.0", "", "1.1\u0662.3"):
             self.assertFalse(is_valid_semver(value), value)
 
 
