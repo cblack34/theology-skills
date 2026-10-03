@@ -46,5 +46,25 @@ class AddSkillTests(unittest.TestCase):
                 new_skill.add_skill("incomplete", "skill", "x")
 
 
+class MainVersionTests(unittest.TestCase):
+    def test_rejects_invalid_version_before_writing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plugins_root = root / "plugins"
+            catalog = root / "marketplace.json"
+            catalog.write_text("{}", encoding="utf-8")
+            argv = ["new_skill.py", "demo", "--description", "x", "--version", "1.0.0-01"]
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(new_skill, "PLUGINS_ROOT", plugins_root),
+                patch.object(new_skill, "CLAUDE_MARKETPLACE", catalog),
+                patch.object(new_skill, "CODEX_MARKETPLACE", catalog),
+            ):
+                with self.assertRaisesRegex(ValueError, "semantic versioning"):
+                    new_skill.main()
+            self.assertFalse(plugins_root.exists())
+            self.assertEqual(catalog.read_text(encoding="utf-8"), "{}")
+
+
 if __name__ == "__main__":
     unittest.main()
