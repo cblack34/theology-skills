@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import yaml
 
 from bump_plugin_version import is_valid_semver
 
@@ -99,18 +100,50 @@ def validate_catalog_entry(
         check.error(path, f"{name!r} must include a category")
 
 
-def frontmatter_value(frontmatter: str, key: str) -> str | None:
-    match = re.search(rf"(?m)^{re.escape(key)}:\s*(.+?)\s*$", frontmatter)
+class StrictLoader(yaml.SafeLoader):
+    """SafeLoader that rejects duplicate mapping keys instead of keeping the last."""
+
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[Any, Any]:
+        seen: set[Any] = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=True)
+            try:
+                is_duplicate = key in seen
+            except TypeError:
+                raise yaml.constructor.ConstructorError(
+                    None, None, f"unhashable mapping key {key!r}", key_node.start_mark
+                ) from None
+            if is_duplicate:
+                raise yaml.constructor.ConstructorError(
+                    None, None, f"duplicate key {key!r}", key_node.start_mark
+                )
+            seen.add(key)
+        return super().construct_mapping(node, deep)
+
+
+def validate_frontmatter(
+    path: Path, contents: str, expected_name: str | None, check: Validation
+) -> None:
+    """Parse the YAML frontmatter the way the harness loaders do and check the required keys."""
+    match = FRONTMATTER_RE.match(contents)
     if match is None:
-        return None
-    value = match.group(1)
-    if value.startswith('"'):
-        try:
-            parsed = json.loads(value)
-        except json.JSONDecodeError:
-            return None
-        return parsed if isinstance(parsed, str) else None
-    return value.strip("' ")
+        check.error(path, "must start with closed YAML frontmatter")
+        return
+    try:
+        data = yaml.load(match.group("body"), Loader=StrictLoader)
+    except yaml.YAMLError as error:
+        check.error(path, f"frontmatter is not valid YAML: {error}")
+        return
+    if not isinstance(data, dict):
+        check.error(path, "frontmatter must be a YAML mapping")
+        return
+    for key in ("name", "description"):
+        value = data.get(key)
+        if not isinstance(value, str) or not value.strip():
+            check.error(path, f"frontmatter {key} must be a non-empty string")
+    name = data.get("name")
+    if expected_name is not None and isinstance(name, str) and name != expected_name:
+        check.error(path, f"frontmatter name must be {expected_name!r}")
 
 
 def validate_skill(path: Path, expected_name: str, check: Validation) -> None:
@@ -119,16 +152,7 @@ def validate_skill(path: Path, expected_name: str, check: Validation) -> None:
     except FileNotFoundError:
         check.error(path, "SKILL.md is missing")
         return
-    match = FRONTMATTER_RE.match(contents)
-    if match is None:
-        check.error(path, "must start with closed YAML frontmatter")
-        return
-    frontmatter = match.group("body")
-    if frontmatter_value(frontmatter, "name") != expected_name:
-        check.error(path, f"frontmatter name must be {expected_name!r}")
-    description = frontmatter_value(frontmatter, "description")
-    if not description:
-        check.error(path, "frontmatter description must be non-empty")
+    validate_frontmatter(path, contents, expected_name, check)
     if "[TODO:" in contents:
         check.error(path, "contains an unfinished [TODO: ...] marker")
 
@@ -175,6 +199,9 @@ def validate_plugin(name: str, check: Validation) -> None:
             isinstance(prompt, str) and prompt.strip() for prompt in prompts
         ):
             check.error(codex_path, "interface.defaultPrompt must be a non-empty string array")
+
+    for agent_path in sorted((plugin_root / "agents").glob("*.md")):
+        validate_frontmatter(agent_path, agent_path.read_text(encoding="utf-8"), None, check)
 
     skills_root = plugin_root / "skills"
     if not skills_root.is_dir():
