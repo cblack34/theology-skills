@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Cross-harness marketplace tooling for the theology-skills marketplace."
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0.3",
+]
 
 [tool.uv]
 package = false
